@@ -174,23 +174,55 @@ async def get_client_voice_config(profile: Optional[str] = None):
 
 @router.get("/api/audio/voice-live/status")
 async def get_voice_live_status(profile: Optional[str] = None):
-    """Which voice chat mode the profile selected (``chained`` | ``gpt-live``) and whether GPT-Live
-    can start. Non-secret: the desktop decides which conversation engine to mount from this."""
+    """Which voice chat mode the profile selected (``chained`` | ``gpt-live`` | ``xai-live``)
+    and whether that layer can start. Non-secret: the desktop decides which conversation
+    engine to mount from this. Routes by ``voice_chat_mode`` so the gpt-live path is
+    untouched."""
     from tools.voice_live import resolve_gpt_live_status
+    from tools.voice_live_xai import XAI_LIVE_MODE, resolve_live_mode, resolve_xai_live_status
+
+    def _resolve_status():
+        if resolve_live_mode() == XAI_LIVE_MODE:
+            return resolve_xai_live_status()
+        return resolve_gpt_live_status()
+
     with http_failure("GPT-Live status resolution failed", 500, "GPT-Live status failed"):
-        result = await _run_config_scoped(profile, resolve_gpt_live_status)
+        result = await _run_config_scoped(profile, _resolve_status)
     return {"ok": True, **result}
 
 
 @router.post("/api/audio/voice-live/session")
 async def create_voice_live_session(payload: VoiceLiveSessionRequest, profile: Optional[str] = None):
-    """Exchange the renderer's WebRTC SDP offer for a GPT-Live session answer.
+    """Exchange the renderer's WebRTC SDP offer for a GPT-Live session answer, or — in
+    ``xai-live`` mode — mint the ephemeral client secret the xAI realtime WebSocket needs.
 
-    The project API key stays on this host; the renderer only receives the session id and the
-    SDP answer. Client delegation is fixed at creation: every ``session.delegation.created`` the
-    renderer receives becomes a Hermes turn on the session it belongs to.
+    The project API key stays on this host; the renderer only receives the session id and
+    the SDP answer (gpt-live) or the ephemeral token (xai-live). Client delegation is fixed
+    at creation: every ``session.delegation.created`` the renderer receives becomes a Hermes
+    turn on the session it belongs to.
     """
     from tools.voice_live import create_webrtc_session
+    from tools.voice_live_xai import (
+        XAI_LIVE_MODE,
+        build_xai_session_handshake,
+        resolve_live_mode,
+    )
+
+    def _resolve_mode():
+        return resolve_live_mode()
+
+    mode = await _run_config_scoped(profile, _resolve_mode)
+    if mode == XAI_LIVE_MODE:
+        # The xAI transport has no SDP offer: the handshake is just the token + WS URL, and
+        # the ephemeral secret is the only vendor credential that ever reaches the client.
+        try:
+            result = await _run_config_scoped(profile, lambda: build_xai_session_handshake(payload.history))
+        except ValueError as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
+        except RuntimeError as exc:
+            raise HTTPException(status_code=502, detail=str(exc))
+        return {"ok": True, **result}
+
     # Validate emptiness only: the vendor's SDP parser needs the offer byte-exact, including the
     # trailing CRLF (a stripped offer answers 400 "failed to unmarshal SDP: EOF").
     sdp = payload.sdp or ""
