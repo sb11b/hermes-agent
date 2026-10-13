@@ -38,7 +38,7 @@ export function VoiceEngineRows({ disabled }: { disabled: boolean }) {
       <DropdownMenuLabel>{c.voiceEngine}</DropdownMenuLabel>
       <DropdownMenuRadioGroup
         onValueChange={value => {
-          if (value !== 'chained' && value !== 'gpt-live') {
+          if (value !== 'chained' && value !== 'gpt-live' && value !== 'xai-live') {
             return
           }
 
@@ -53,6 +53,16 @@ export function VoiceEngineRows({ disabled }: { disabled: boolean }) {
         <DropdownMenuRadioItem className={dropdownMenuRow} disabled={disabled || !liveAvailable} value="gpt-live">
           <span className="flex min-w-0 flex-col">
             <span>{c.voiceEngineLive}</span>
+            {liveAvailable ? null : (
+              <span className="text-muted-foreground truncate text-xs">
+                {status.reason ?? c.voiceEngineLiveNeedsKey}
+              </span>
+            )}
+          </span>
+        </DropdownMenuRadioItem>
+        <DropdownMenuRadioItem className={dropdownMenuRow} disabled={disabled || !liveAvailable} value="xai-live">
+          <span className="flex min-w-0 flex-col">
+            <span>{c.voiceEngineLiveXai}</span>
             {liveAvailable ? null : (
               <span className="text-muted-foreground truncate text-xs">
                 {status.reason ?? c.voiceEngineLiveNeedsKey}

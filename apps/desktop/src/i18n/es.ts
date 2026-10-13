@@ -3846,6 +3846,7 @@ export const esOverrides = {
     voiceEngine: 'Motor del chat de voz',
     voiceEngineChained: 'Voz a texto + voz de Hermes',
     voiceEngineLive: 'GPT-Live (full-duplex, delega en Hermes)',
+    voiceEngineLiveXai: 'xAI-Live (full-duplex, delega en Hermes)',
     voiceEngineLiveNeedsKey: 'Requiere una clave API de OpenAI',
     voiceEngineChangeFailed: 'No se pudo cambiar el motor del chat de voz',
     voiceEngineChainedShort: 'voz a texto',

@@ -19,7 +19,7 @@ import { hermesApi } from '@/hermes'
  * https://developers.openai.com/api/docs/guides/live-delegation
  */
 
-export type VoiceChatMode = 'chained' | 'gpt-live'
+export type VoiceChatMode = 'chained' | 'gpt-live' | 'xai-live'
 
 export interface VoiceLiveStatus {
   mode: VoiceChatMode
@@ -27,6 +27,8 @@ export interface VoiceLiveStatus {
   reason: null | string
   model: string
   voice: string
+  /** Extra persona sentences (`voice.xai_live.instructions`); xai-live only. */
+  instructions?: string
 }
 
 export interface LiveHistoryMessage {
@@ -91,9 +93,13 @@ export async function fetchVoiceLiveStatus(): Promise<null | VoiceLiveStatus> {
 
     return {
       available: Boolean(response.available),
-      mode: response.mode === 'gpt-live' ? 'gpt-live' : 'chained',
+      // `xai-live` routes the same endpoint to the xAI WebSocket transport; the
+      // backend (Slice 1) already returns it, so pass it through verbatim.
+      mode: response.mode === 'xai-live' ? 'xai-live' : response.mode === 'gpt-live' ? 'gpt-live' : 'chained',
       model: response.model,
       reason: response.reason ?? null,
+      // Extra persona sentences, xai-live only; undefined for the other modes.
+      instructions: response.instructions,
       voice: response.voice
     }
   } catch {

@@ -3414,6 +3414,7 @@ export const en: Translations = {
     voiceEngine: 'Voice chat engine',
     voiceEngineChained: 'Speech-to-text + Hermes voice',
     voiceEngineLive: 'GPT-Live (full-duplex, delegates to Hermes)',
+    voiceEngineLiveXai: 'xAI-Live (full-duplex, delegates to Hermes)',
     voiceEngineLiveNeedsKey: 'Needs an OpenAI API key',
     voiceEngineChangeFailed: 'Could not change the voice chat engine',
     voiceEngineChainedShort: 'speech-to-text',

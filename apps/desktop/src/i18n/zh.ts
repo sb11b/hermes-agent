@@ -3326,6 +3326,7 @@ export const zhOverrides = {
     voiceEngine: '语音聊天引擎',
     voiceEngineChained: '语音转文字 + Hermes 语音',
     voiceEngineLive: 'GPT-Live（全双工，委托给 Hermes）',
+    voiceEngineLiveXai: 'xAI-Live（全双工，委托给 Hermes）',
     voiceEngineLiveNeedsKey: '需要 OpenAI API 密钥',
     voiceEngineChangeFailed: '无法更改语音聊天引擎',
     voiceEngineChainedShort: '语音转文字',
