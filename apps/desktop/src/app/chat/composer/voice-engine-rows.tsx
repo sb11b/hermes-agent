@@ -84,7 +84,9 @@ export function useVoiceEngineName(): null | string {
     return null
   }
 
-  return selectedVoiceChatMode(status) === 'gpt-live'
+  const mode = selectedVoiceChatMode(status)
+
+  return mode === 'gpt-live' || mode === 'xai-live'
     ? t.composer.voiceEngineLiveShort
     : t.composer.voiceEngineChainedShort
 }
