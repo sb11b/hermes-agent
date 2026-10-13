@@ -1225,6 +1225,14 @@ DEFAULT_CONFIG = {
             "instructions": "",
             # optional "api_key" / "base_url" keys override the OpenAI audio credentials for this mode only
         },
+        # xai-live uses the xAI realtime WebSocket (grok-voice-think-fast-2.0) plus a
+        # short-lived ephemeral client secret minted server-side; needs XAI_API_KEY.
+        "xai_live": {
+            "model": "grok-voice-think-fast-2.0",
+            "voice": "",  # empty = xAI default voice
+            "instructions": "",
+            # optional "api_key" / "base_url" keys override the xAI credentials for this mode only
+        },
         "record_key": "ctrl+b",
         "submit_mode": "direct",  # TUI: direct submits immediately; draft = editable transcript
         "max_recording_seconds": 120,
