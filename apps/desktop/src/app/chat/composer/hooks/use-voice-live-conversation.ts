@@ -2,7 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useI18n } from '@/i18n'
 import { sanitizeTextForSpeech } from '@/lib/speech-text'
-import { type LiveHistoryMessage, type LiveTranscriptFragment, VoiceLiveSession } from '@/lib/voice-live'
+import {
+  fetchVoiceLiveStatus,
+  type LiveHistoryMessage,
+  type LiveTranscriptFragment,
+  VoiceLiveSession
+} from '@/lib/voice-live'
+import { VoiceLiveXaiSession } from '@/lib/voice-live-xai'
 import { isVoiceStopCommand } from '@/lib/voice-stop-word'
 import { notify, notifyError } from '@/store/notifications'
 
@@ -41,6 +47,30 @@ interface VoiceLiveConversationOptions {
   /** Names of tools currently running in the turn (quiet progress for the voice). */
   activeToolLabel?: () => null | string
   beforeMicOpen?: () => Promise<void> | void
+}
+
+/** The transport surface the conversation hook drives. Both live engines
+ *  implement it; the delegation → prompt.submit path is SHARED, never forked,
+ *  so only the `start()` transport selection below differs by mode. */
+interface VoiceLiveTransport {
+  close: () => void
+  instruct: (content: string) => void
+  setMuted: (muted: boolean) => void
+  speak: (delegationId: null | string, content: string) => void
+  start: (history: LiveHistoryMessage[]) => Promise<void>
+  think: (delegationId: null | string, content: string) => void
+}
+
+/** Pick the live transport for `mode`: the xAI WebSocket transport in xai-live,
+ *  the OpenAI WebRTC one in gpt-live. */
+function createLiveTransport(
+  mode: 'chained' | 'gpt-live' | 'xai-live',
+  handlers: ConstructorParameters<typeof VoiceLiveSession>[0],
+  owner: null | ConstructorParameters<typeof VoiceLiveSession>[1]
+): VoiceLiveTransport {
+  return mode === 'xai-live'
+    ? new VoiceLiveXaiSession(handlers, owner)
+    : new VoiceLiveSession(handlers, owner)
 }
 
 /** Turn transcript fragments into the Hermes turn: `prompt` is what the user
@@ -122,7 +152,7 @@ export function useVoiceLiveConversation({
   // Mirrors delegationRef for the reply-drive effect: a new delegation must
   // restart the feed loop, and a ref write alone does not re-render.
   const [activeDelegation, setActiveDelegation] = useState<null | string>(null)
-  const sessionRef = useRef<null | VoiceLiveSession>(null)
+  const sessionRef = useRef<null | VoiceLiveTransport>(null)
   // The scope's session owner (a Bot's own connection + profile) picks the
   // GPT-Live backend and voice; a ref keeps the long-lived start closures
   // reading the current value.
@@ -246,7 +276,8 @@ export function useVoiceLiveConversation({
       return
     }
 
-    const session = new VoiceLiveSession(
+    const session = createLiveTransport(
+      (await fetchVoiceLiveStatus())?.mode ?? 'gpt-live',
       {
         // The voice model answers a bare "stop" itself (it just goes quiet) and
         // never delegates it, so the spoken stop phrase is judged on the user

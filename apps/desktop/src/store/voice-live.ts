@@ -32,8 +32,16 @@ export async function refreshVoiceLiveStatus(): Promise<null | VoiceLiveStatus> 
 }
 
 /** Selected mode. `chained` until the backend answers, or when the backend predates the mode. */
-export function selectedVoiceChatMode(status: null | VoiceLiveStatus = $voiceLiveStatus.get()): 'chained' | 'gpt-live' {
-  return status?.mode === 'gpt-live' ? 'gpt-live' : 'chained'
+export function selectedVoiceChatMode(status: null | VoiceLiveStatus = $voiceLiveStatus.get()): 'chained' | 'gpt-live' | 'xai-live' {
+  if (status?.mode === 'gpt-live') {
+    return 'gpt-live'
+  }
+
+  if (status?.mode === 'xai-live') {
+    return 'xai-live'
+  }
+
+  return 'chained'
 }
 
 /**
@@ -46,7 +54,7 @@ export function selectedVoiceChatMode(status: null | VoiceLiveStatus = $voiceLiv
  * the shared-primary route an unscoped write lands in the LAUNCH profile's
  * config.yaml, not the viewed one (#125969 class).
  */
-export async function setVoiceChatMode(mode: 'chained' | 'gpt-live'): Promise<null | VoiceLiveStatus> {
+export async function setVoiceChatMode(mode: 'chained' | 'gpt-live' | 'xai-live'): Promise<null | VoiceLiveStatus> {
   await requestGatewayForProfile(activeGatewayProfileKey(), 'config.set', { key: 'voice.voice_chat_mode', value: mode })
 
   return refreshVoiceLiveStatus()

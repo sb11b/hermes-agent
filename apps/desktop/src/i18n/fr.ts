@@ -3860,6 +3860,7 @@ export const frOverrides = {
     voiceEngine: 'Moteur de conversation vocale',
     voiceEngineChained: 'Reconnaissance vocale + voix Hermes',
     voiceEngineLive: 'GPT-Live (duplex intégral, délègue à Hermes)',
+    voiceEngineLiveXai: 'xAI-Live (duplex intégral, délègue à Hermes)',
     voiceEngineLiveNeedsKey: 'Nécessite une clé API OpenAI',
     voiceEngineChangeFailed: 'Impossible de changer le moteur de conversation vocale',
     voiceEngineChainedShort: 'reconnaissance vocale',

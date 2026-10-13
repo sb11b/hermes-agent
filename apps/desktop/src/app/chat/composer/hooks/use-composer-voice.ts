@@ -261,7 +261,7 @@ export function useComposerVoice({
     const status = $voiceLiveStatus.get()
     let live = false
 
-    if (selectedVoiceChatMode(status) === 'gpt-live') {
+    if (selectedVoiceChatMode(status) === 'gpt-live' || selectedVoiceChatMode(status) === 'xai-live') {
       if (status?.available) {
         live = true
       } else {

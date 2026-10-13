@@ -3852,6 +3852,7 @@ export const deOverrides = {
     voiceEngine: 'Sprachchat-Engine',
     voiceEngineChained: 'Sprache-zu-Text + Hermes-Stimme',
     voiceEngineLive: 'GPT-Live (Vollduplex, delegiert an Hermes)',
+    voiceEngineLiveXai: 'xAI-Live (Vollduplex, delegiert an Hermes)',
     voiceEngineLiveNeedsKey: 'Benötigt einen OpenAI-API-Schlüssel',
     voiceEngineChangeFailed: 'Sprachchat-Engine konnte nicht geändert werden',
     voiceEngineChainedShort: 'Sprache-zu-Text',
