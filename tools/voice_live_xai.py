@@ -200,7 +200,7 @@ def _mint_with_urllib(url: str, payload: bytes, headers: Dict[str, str]):
     request = urllib.request.Request(url, data=payload, method="POST", headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
-            body = response.read().decode("utf-8")
+            raw = response.read()
     except urllib.error.HTTPError as exc:
         err_body = exc.read().decode("utf-8", "replace")
         logger.warning("xAI client secret request failed: HTTP %s", exc.code)
@@ -208,11 +208,11 @@ def _mint_with_urllib(url: str, payload: bytes, headers: Dict[str, str]):
     except urllib.error.URLError as exc:
         logger.warning("xAI client secret request failed: %s", type(exc).__name__)
         return None, 502, "could not reach the xAI realtime secrets service."
-    # Mirror the httpx path: a non-JSON 200 is a 502 "unreadable data", never a
-    # bare JSONDecodeError (which the route's `except ValueError` would mis-map
-    # to a 503 with a vendor parser message).
+    # A non-JSON or non-UTF-8 200 is a 502 "unreadable data", never a bare
+    # JSONDecodeError/UnicodeDecodeError (ValueError subclasses the route's
+    # `except ValueError` would mis-map to a 503 with a vendor parser message).
     try:
-        return json.loads(body), None, ""
+        return json.loads(raw.decode("utf-8")), None, ""
     except ValueError:
         return None, 502, "xAI realtime secrets returned unreadable data."
 
