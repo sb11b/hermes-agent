@@ -253,8 +253,9 @@ export const ENUM_OPTIONS: Record<string, string[]> = {
   // tools/transcription_common.py (local_command is auto-detected, not picked).
   'stt.provider': ['local', 'groq', 'openai', 'mistral', 'xai', 'elevenlabs', 'deepinfra'],
   // How the desktop voice conversation is wired — tools/voice_live.py owns the
-  // gpt-live branch (one full-duplex voice model delegating to Hermes).
-  'voice.voice_chat_mode': ['chained', 'gpt-live'],
+  // gpt-live branch (one full-duplex voice model delegating to Hermes) and
+  // tools/voice_live_xai.py the xai-live branch (xAI realtime WebSocket).
+  'voice.voice_chat_mode': ['chained', 'gpt-live', 'xai-live'],
   'voice.gpt_live.voice': [
     'marin',
     'cedar',
