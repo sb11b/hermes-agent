@@ -1,0 +1,53 @@
+# Voice-only Hermes instance. Runbook for the first Railway deploy.
+#
+# Railway builds this repo's Dockerfile. Set the service start command to
+# `gateway run`. The image CMD is empty; an empty command starts the CLI,
+# not the gateway. Do not set HERMES_GATEWAY_BOOTSTRAP_STATE=running: that
+# also starts the supervised s6 gateway beside this process.
+#
+# Mount the ported profile at /opt/data (the image's HERMES_HOME). That
+# volume carries memory (memories/MEMORY.md) and the user profile
+# (USER.md / memories/USER.md). There is no owner-email env var, and no
+# env var selects the brain model: it is model.default in that profile's
+# config.yaml. LLM_MODEL is not read.
+#
+# Messaging credentials in the same profile still start those adapters.
+# Leave the main instance's platform tokens off this volume.
+# HERMES_CRON_ENABLED=false is the backstop that skips the cron ticker
+# even if jobs.json was copied. Unset, the ticker starts.
+#
+# Voice mode, model, and voice are config.yaml keys. The HERMES_* vars
+# below override them only when non-empty:
+#   HERMES_VOICE_CHAT_MODE  -> voice.voice_chat_mode
+#   HERMES_XAI_LIVE_MODEL   -> voice.xai_live.model
+#   HERMES_XAI_LIVE_VOICE   -> voice.xai_live.voice
+# The xAI credential is XAI_API_KEY (or voice.xai_live.api_key). The key
+# stays on the server. Put the real value in Railway service variables,
+# never in this file.
+#
+# Local: XAI_API_KEY=... docker compose -f docker-compose.voice.yml up
+
+services:
+  gateway:
+    build: .
+    image: hermes-agent-voice
+    container_name: hermes-voice
+    restart: unless-stopped
+    volumes:
+      # Seed this volume with the ported memory + USER profile before first use.
+      - hermes-voice-data:/opt/data
+    environment:
+      # Required. Empty here; inject the real key at deploy time.
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      # voice.voice_chat_mode
+      HERMES_VOICE_CHAT_MODE: xai-live
+      # voice.xai_live.model — empty keeps grok-voice-think-fast-2.0
+      HERMES_XAI_LIVE_MODEL: ${HERMES_XAI_LIVE_MODEL:-}
+      # voice.xai_live.voice — empty keeps the xAI default voice
+      HERMES_XAI_LIVE_VOICE: ${HERMES_XAI_LIVE_VOICE:-}
+      # false skips the cron ticker. 0/no/off/disabled also skip. Unset starts it.
+      HERMES_CRON_ENABLED: "false"
+    command: ["gateway", "run"]
+
+volumes:
+  hermes-voice-data:

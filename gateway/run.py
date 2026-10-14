@@ -4817,7 +4817,13 @@ def _start_cron_ticker(stop_event: threading.Event, adapters=None, loop=None, in
 
 
 def _stop_cron_provider(provider) -> None:
-    """Stop a cron provider without letting it choose the gateway exit code."""
+    """Stop a cron provider without letting it choose the gateway exit code.
+
+    ``None`` is the voice-only path (``HERMES_CRON_ENABLED`` off): no ticker
+    was started, so shutdown has nothing to stop.
+    """
+    if provider is None:
+        return
     try:
         provider.stop()
     except SystemExit as exc:
@@ -5620,13 +5626,42 @@ async def _start_gateway_start_control_socket(runner):
     return _control_server
 
 
+def _start_gateway_housekeeping_thread(cron_stop, runner, *, cron_provider, cron_thread):
+    """Start the gateway housekeeping thread. ``cron_provider`` / ``cron_thread`` of
+    ``None`` omit the misfire sweep and the ticker supervisor."""
+    housekeeping_thread = threading.Thread(
+        target=_start_gateway_housekeeping, args=(cron_stop,),
+        kwargs={"adapters": runner.adapters, "loop": asyncio.get_running_loop(),
+                "cron_provider": cron_provider, "runner": runner, "cron_thread": cron_thread},
+        daemon=True, name="gateway-housekeeping")
+    housekeeping_thread.start()
+    return housekeeping_thread
+
+
 def _start_gateway_start_cron_and_housekeeping(runner):
     """Start the cron scheduler thread + gateway housekeeping thread; returns
-    ``(cron_stop, cron_provider, cron_thread, housekeeping_thread)``."""
+    ``(cron_stop, cron_provider, cron_thread, housekeeping_thread)``.
+
+    ``HERMES_CRON_ENABLED`` set to ``false`` (also ``0`` / ``no`` / ``off`` /
+    ``disabled``) skips the ticker. Housekeeping still runs, without a cron
+    provider, so it does not sweep misfires or restart a ticker. Unset keeps
+    the historical path: the ticker starts.
+    """
+    from cron.env_settings import cron_env_setting, cron_scheduler_enabled
+
+    cron_stop = threading.Event()
+    if not cron_scheduler_enabled():
+        # Log the flag only. Never log provider keys or tokens.
+        logger.info(
+            "Cron scheduler disabled (HERMES_CRON_ENABLED=%s); scheduled jobs will not start",
+            cron_env_setting("HERMES_CRON_ENABLED").strip() or "(empty)")
+        housekeeping_thread = _start_gateway_housekeeping_thread(
+            cron_stop, runner, cron_provider=None, cron_thread=None)
+        return cron_stop, None, None, housekeeping_thread
+
     # The event loop is passed so cron delivery can use live adapters (E2EE support).
     from cron.scheduler_provider import (
         InProcessCronScheduler, resolve_cron_scheduler, scheduler_for_profile_mode)
-    cron_stop = threading.Event()
     # ONE gateway process per host multiplexes every profile, so its cron ticker owns EVERY
     # profile's store — `gateway.multiplex_profiles` gates adapters, not cron. Gating the tick set
     # on that flag left every non-launch profile's jobs in a store no ticker visited: they
@@ -5688,12 +5723,8 @@ def _start_gateway_start_cron_and_housekeeping(runner):
                 getattr(cron_provider, "name", "external"))
 
     # Gateway-only housekeeping runs independently of the cron provider; shares cron_stop for shutdown.
-    housekeeping_thread = threading.Thread(
-        target=_start_gateway_housekeeping, args=(cron_stop,),
-        kwargs={"adapters": runner.adapters, "loop": asyncio.get_running_loop(),
-                "cron_provider": cron_provider, "runner": runner, "cron_thread": cron_thread},
-        daemon=True, name="gateway-housekeeping")
-    housekeeping_thread.start()
+    housekeeping_thread = _start_gateway_housekeeping_thread(
+        cron_stop, runner, cron_provider=cron_provider, cron_thread=cron_thread)
     return cron_stop, cron_provider, cron_thread, housekeeping_thread
 
 

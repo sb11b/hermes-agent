@@ -1217,6 +1217,7 @@ DEFAULT_CONFIG = {
         #   gpt-live — one full-duplex voice model (OpenAI GPT-Live) owns the mic and speaker and
         #              DELEGATES every real request to Hermes (any model / provider you have
         #              selected); needs an OpenAI API key. $0.05/min voice layer billing.
+        # Env HERMES_VOICE_CHAT_MODE overrides this when non-empty (container deploys).
         "voice_chat_mode": "chained",
         "gpt_live": {
             "model": "gpt-live-1",
@@ -1228,8 +1229,8 @@ DEFAULT_CONFIG = {
         # xai-live uses the xAI realtime WebSocket (grok-voice-think-fast-2.0) plus a
         # short-lived ephemeral client secret minted server-side; needs XAI_API_KEY.
         "xai_live": {
-            "model": "grok-voice-think-fast-2.0",
-            "voice": "",  # empty = xAI default voice
+            "model": "grok-voice-think-fast-2.0",  # Env HERMES_XAI_LIVE_MODEL overrides when non-empty
+            "voice": "",  # empty = xAI default voice; Env HERMES_XAI_LIVE_VOICE overrides when non-empty
             "instructions": "",
             # optional "api_key" / "base_url" keys override the xAI credentials for this mode only
         },
@@ -1806,6 +1807,8 @@ DEFAULT_CONFIG = {
     },
 
     "cron": {
+        # HERMES_CRON_ENABLED=false (also 0/no/off/disabled) skips the gateway ticker.
+        # Unset keeps it on. See cron.env_settings.cron_scheduler_enabled.
         "catch_up_missed": True,  # False skips recurring misses beyond the local grace window.
         # Let cron-spawned agents use the cronjob toolset (the "cron-librarian" pattern). Off by
         # default: policy-denied in cron context to prevent unattended scheduling loops. Jobs

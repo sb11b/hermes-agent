@@ -1615,6 +1615,57 @@ def _env_ref_snapshot(obj, snapshot=None):
     return snapshot
 
 
+# Container/Railway overrides. These are not ${VAR} refs inside config.yaml, so a
+# load_config() cache that only snapshots file refs would pin the pre-override
+# values until the file changed. Recorded on every successful load.
+_VOICE_DEPLOY_ENV_KEYS = (
+    "HERMES_VOICE_CHAT_MODE",
+    "HERMES_XAI_LIVE_MODEL",
+    "HERMES_XAI_LIVE_VOICE",
+)
+
+
+def _voice_deploy_env_value(name: str) -> str:
+    return str(_env_ref_lookup(name) or "").strip()
+
+
+def _record_voice_deploy_env(snapshot: dict) -> dict:
+    for name in _VOICE_DEPLOY_ENV_KEYS:
+        snapshot[name] = _env_ref_lookup(name)
+    return snapshot
+
+
+def _apply_voice_deploy_env(expanded: dict) -> dict:
+    """Apply non-empty voice deploy env onto an already-expanded config.
+
+    ``HERMES_VOICE_CHAT_MODE`` → ``voice.voice_chat_mode``
+    ``HERMES_XAI_LIVE_MODEL`` → ``voice.xai_live.model``
+    ``HERMES_XAI_LIVE_VOICE`` → ``voice.xai_live.voice``
+
+    Unset or blank leaves the yaml/default value alone, so gpt-live and
+    chained configs stay as they were. Does not read or log ``XAI_API_KEY``.
+    """
+    mode = _voice_deploy_env_value("HERMES_VOICE_CHAT_MODE")
+    model = _voice_deploy_env_value("HERMES_XAI_LIVE_MODEL")
+    voice_name = _voice_deploy_env_value("HERMES_XAI_LIVE_VOICE")
+    if not mode and not model and not voice_name:
+        return expanded
+    voice = expanded.get("voice")
+    voice = dict(voice) if isinstance(voice, dict) else {}
+    expanded["voice"] = voice
+    if mode:
+        voice["voice_chat_mode"] = mode
+    if model or voice_name:
+        live = voice.get("xai_live")
+        live = dict(live) if isinstance(live, dict) else {}
+        voice["xai_live"] = live
+        if model:
+            live["model"] = model
+        if voice_name:
+            live["voice"] = voice_name
+    return expanded
+
+
 def _items_by_unique_name(items):
     """Return a name-indexed dict only when all items have unique string names."""
     if not isinstance(items, list):
@@ -2367,6 +2418,7 @@ def _load_config_impl(*, want_deepcopy: bool) -> dict[str, Any]:
 
         normalized = _canonicalize_config(config)
         expanded, managed_config = _merge_managed_overlay(_expand_env_vars(normalized))
+        expanded = _apply_voice_deploy_env(expanded)
         _LAST_EXPANDED_CONFIG_BY_PATH[path_key] = copy.deepcopy(expanded)
         if cache_sig is not None:
             # The cache stores its own deepcopy so load_config() callers can mutate freely while
@@ -2376,6 +2428,7 @@ def _load_config_impl(*, want_deepcopy: bool) -> dict[str, Any]:
             env_snapshot = _env_ref_snapshot(normalized)
             if managed_config:
                 _env_ref_snapshot(managed_config, env_snapshot)
+            _record_voice_deploy_env(env_snapshot)
             _LOAD_CONFIG_CACHE[path_key] = (*cache_sig, cached_copy, env_snapshot)
             # Readonly path returns the same object later calls will see (identity invariant).
             if not want_deepcopy:
