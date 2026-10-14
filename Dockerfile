@@ -499,7 +499,12 @@ RUN mkdir -p /opt/data && chmod 0644 /opt/hermes/tools/facts.json && \
     rm -f /opt/hermes/.venv/.lock /opt/hermes/pm-runtime/.lock
 # Build helpers use system Python above; TUI gateway children need the sealed runtime.
 ENV HERMES_PYTHON=/opt/hermes/.venv/bin/python
-VOLUME [ "/opt/data" ]
+# NOTE: no `VOLUME [ "/opt/data" ]` here. Railway's image validator rejects
+# the Docker VOLUME instruction; it provides persistence through its own
+# Volume mount at /opt/data instead. The directory is already created above
+# (mkdir -p /opt/data), so removing the declaration changes nothing at
+# runtime — plain Docker/Podman users who want a named volume add it with
+# `-v hermes-data:/opt/data` at run time.
 
 # The image ENTRYPOINT is a tiny dispatcher rather than `/init` directly.
 # When the image really owns PID 1 (normal Docker / Podman), the dispatcher
