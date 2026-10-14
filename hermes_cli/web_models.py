@@ -236,8 +236,13 @@ class TTSSpeakRequest(BaseModel):
 
 class VoiceLiveSessionRequest(BaseModel):
     """POST /api/audio/voice-live/session: the renderer's WebRTC SDP offer plus optional prior
-    text turns (``{"type":"message","role":..,"content":[..]}``) to seed the live voice model."""
-    sdp: str
+    text turns (``{"type":"message","role":..,"content":[..]}``) to seed the live voice model.
+
+    ``sdp`` is optional: the xai-live transport has no SDP offer (the handshake is just the
+    ephemeral token + WS URL), so a required field would 422 before the handler runs. The
+    gpt-live path validates emptiness itself and returns a clear 400.
+    """
+    sdp: Optional[str] = None
     history: Optional[list[dict[str, Any]]] = None
 
 class TTSLeaseRequest(BaseModel):
