@@ -1639,6 +1639,21 @@ platform_toolsets:
 #     bit_rate: 128000      # MP3 bitrate (codec=mp3 only)
 
 # =============================================================================
+# Desktop voice chat (xai-live)
+# =============================================================================
+# voice.voice_chat_mode is chained | gpt-live | xai-live. xai-live needs
+# XAI_API_KEY in the environment. The key never reaches the client.
+# Non-empty HERMES_VOICE_CHAT_MODE / HERMES_XAI_LIVE_MODEL / HERMES_XAI_LIVE_VOICE
+# override these keys for the process. Empty values below are not applied
+# while this block stays commented.
+# voice:
+#   voice_chat_mode: ""          # set xai-live on the voice-only instance
+#   xai_live:
+#     model: ""                  # empty = grok-voice-think-fast-2.0
+#     voice: ""                  # empty = the xAI default voice
+#     # api_key: ""              # optional; prefer XAI_API_KEY in the environment
+
+# =============================================================================
 # Voice Transcription (Speech-to-Text)
 # =============================================================================
 # Automatically transcribe voice messages on messaging platforms.

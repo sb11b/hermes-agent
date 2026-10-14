@@ -24,3 +24,20 @@ def cron_env_setting(name: str, default: str = "") -> str:
         scope = load_env_file(get_hermes_home() / ".env")
     value = scope.get(name)
     return default if value is None else str(value)
+
+
+# Explicit off values for HERMES_CRON_ENABLED. Anything else, including unset
+# and blank, keeps the ticker on so existing instances do not change.
+_CRON_SCHEDULER_OFF = frozenset({"0", "false", "no", "off", "disabled"})
+
+
+def cron_scheduler_enabled() -> bool:
+    """Whether ``gateway run`` should start the cron ticker.
+
+    ``HERMES_CRON_ENABLED`` unset, blank, or any value outside
+    ``0`` / ``false`` / ``no`` / ``off`` / ``disabled`` leaves the scheduler
+    on (historical behavior). A voice-only instance sets ``false`` so a
+    copied ``jobs.json`` does not fire.
+    """
+    raw = cron_env_setting("HERMES_CRON_ENABLED").strip().lower()
+    return raw not in _CRON_SCHEDULER_OFF
