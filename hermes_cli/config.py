@@ -1626,12 +1626,32 @@ _VOICE_DEPLOY_ENV_KEYS = (
 
 
 def _voice_deploy_env_value(name: str) -> str:
-    return str(_env_ref_lookup(name) or "").strip()
+    # Deployment-level vars (Railway service variables), NOT per-profile .env secrets.
+    # Read os.environ directly: inside a profile secret scope (the /api/audio/voice-live/session
+    # path runs under _config_profile_scope) _env_ref_lookup fails closed on a miss and would
+    # never see these, so voice.voice_chat_mode would silently fall back to the yaml default and
+    # the session endpoint would take the gpt-live branch and demand an SDP offer. The fresh-load
+    # /status path (no scope) already saw them via _env_ref_lookup; this keeps both paths equal.
+    return str(os.environ.get(name) or "").strip()
+
+
+def _snapshot_env_current(name: str, recorded: Optional[str]) -> bool:
+    """Whether an env_snapshot entry still matches the live value.
+
+    The snapshot is written with two readers: ${VAR} refs via _env_ref_lookup (scope-aware)
+    and the voice-deploy vars via _voice_deploy_env_value (os.environ). The drift check must
+    use the SAME reader that produced the value, or a voice var stored from os.environ would
+    be compared against the scope-aware lookup and spuriously miss — forcing a reload every
+    call and breaking load_config()'s identity invariant.
+    """
+    if name in _VOICE_DEPLOY_ENV_KEYS:
+        return _voice_deploy_env_value(name) == (recorded or "")
+    return _env_ref_lookup(name) == recorded
 
 
 def _record_voice_deploy_env(snapshot: dict) -> dict:
     for name in _VOICE_DEPLOY_ENV_KEYS:
-        snapshot[name] = _env_ref_lookup(name)
+        snapshot[name] = _voice_deploy_env_value(name)
     return snapshot
 
 
@@ -2347,7 +2367,7 @@ def _load_config_cache_hit(path_key: str, cache_sig: Any) -> Optional[dict[str, 
         except OSError:
             return hit
     env_snapshot = cached[9] if len(cached) > 9 else {}
-    if all(_env_ref_lookup(k) == v for k, v in env_snapshot.items()):
+    if all(_snapshot_env_current(k, v) for k, v in env_snapshot.items()):
         return hit
     return None
 
