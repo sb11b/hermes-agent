@@ -122,3 +122,22 @@ async def test_voices_route_rejects_oversized_response(monkeypatch, tmp_path):
     with pytest.raises(HTTPException) as exc_info:
         await audio.get_elevenlabs_voices()
     assert exc_info.value.status_code == 502
+
+
+def test_voice_live_session_request_sdp_optional():
+    """The xai-live session request must not require an SDP offer.
+
+    FastAPI validates the request body before the handler runs, so a required ``sdp``
+    field 422s the xai-live path (which has no SDP — the handshake is just the ephemeral
+    token + WS URL) before it can mint the token. ``sdp`` must be Optional; the gpt-live
+    path validates emptiness itself and returns a clear 400.
+    """
+    from hermes_cli.web_models import VoiceLiveSessionRequest
+
+    # xai-live: no sdp at all must validate.
+    req = VoiceLiveSessionRequest(history=[])
+    assert req.sdp is None
+
+    # gpt-live: sdp still accepted when present.
+    req2 = VoiceLiveSessionRequest(sdp="v=0\r\n", history=[])
+    assert req2.sdp == "v=0\r\n"
